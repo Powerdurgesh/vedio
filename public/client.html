@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head><title>Client Camera</title></head>
+<body>
+<h2>Client Camera Active</h2>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    const peerConnection = new RTCPeerConnection();
+
+    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        .then(stream => {
+            stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+            return peerConnection.createOffer();
+        })
+        .then(offer => {
+            return peerConnection.setLocalDescription(offer).then(() => {
+                socket.emit('offer', offer);
+            });
+        });
+
+    socket.on('answer', answer => {
+        peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+    });
+
+    peerConnection.onicecandidate = event => {
+        if (event.candidate) {
+            socket.emit('ice-candidate', event.candidate);
+        }
+    };
+
+    socket.on('ice-candidate', candidate => {
+        peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+    });
+</script>
+</body>
+</html>
